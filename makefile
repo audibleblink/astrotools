@@ -1,20 +1,20 @@
 # DATA ?= /Volumes/AIRUSB/ASIAIR/Autorun
 DATA ?= /Volumes/ASIAIR/Autorun
-ai_model = /opt/homebrew/Cellar/starnet2++/bin/starnet2_weights.pb
+STARNET ?= ${HOMEBREW_PREFIX}/bin/starnet++
+
 scratch = process
 dirs = biases flats darks lights ${scratch}
 
-starnet = ${HOMEBREW_PREFIX}/bin/starnet++
 
 help:
 	@grep -E '^[a-zA-Z0-9\.%]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-new: $(dirs) ## Create a new workspace
+init: $(dirs) ## Create a new workspace
 
 clean: ## Delete Siril artifacts
 	rm -rf *.fit ${scratch} 2>/dev/null
 
-superclean: ## Delete everything except the makefile
+purge: ## Delete everything except the makefile
 	@rm -rf $(filter-out makefile, $(wildcard *))
 
 import: obj-check | new ## Copy ASIAIR data from $DATA to ${dirs}
@@ -23,7 +23,7 @@ import: obj-check | new ## Copy ASIAIR data from $DATA to ${dirs}
 	rsync -a --progress ${DATA}/Flat/*.fit flats
 	rsync -a --progress ${DATA}/Light/${OBJ}/*.fit lights
 
-%.starless.tif: $(starnet) starnet2_weights.pb ## Create a starless image from $*.tif
+%.starless.tif: $(STARNET)  ## Create a starless image from $*.tif
 	$< $*.tif $@
 
 .ONESHELL:
@@ -41,12 +41,9 @@ import: obj-check | new ## Copy ASIAIR data from $DATA to ${dirs}
 
 ################################################################################
 
-$(starnet):
+$(STARNET):
 	brew tap audibleblink/starnet2cli
 	brew install starnet2cli
-
-starnet2_weights.pb:
-	ln -s ${ai_model} .
 
 $(dirs):
 	@mkdir -p $@
@@ -56,4 +53,4 @@ ifndef OBJ
 	$(error OBJ is undefined)
 endif
 
-.PHONY: help clean new archive superclean obj-check
+.PHONY: help clean init archive purge obj-check import
