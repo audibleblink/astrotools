@@ -4,6 +4,8 @@ ai_model = /opt/homebrew/Cellar/starnet2++/bin/starnet2_weights.pb
 scratch = process
 dirs = biases flats darks lights ${scratch}
 
+starnet = ${HOMEBREW_PREFIX}/bin/starnet++
+
 help:
 	@grep -E '^[a-zA-Z0-9\.%]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
@@ -21,9 +23,8 @@ import: obj-check | new ## Copy ASIAIR data from $DATA to ${dirs}
 	rsync -a --progress ${DATA}/Flat/*.fit flats
 	rsync -a --progress ${DATA}/Light/${OBJ}/*.fit lights
 
-%.starless.tif: starnet2_weights.pb ## Create a starless image from $*.tif
-	DYLD_LIBRARY_PATH=$${DYLD_LIBRARY_PATH}:/opt/homebrew/lib starnet2++ $*.tif $@
-	rm $<
+%.starless.tif: $(starnet) starnet2_weights.pb ## Create a starless image from $*.tif
+	$< $*.tif $@
 
 .ONESHELL:
 %.tif: ## Convert $*.fit into a 16-bit TIFF
@@ -39,6 +40,10 @@ import: obj-check | new ## Copy ASIAIR data from $DATA to ${dirs}
 
 
 ################################################################################
+
+$(starnet):
+	brew tap audibleblink/starnet2cli
+	brew install starnet2cli
 
 starnet2_weights.pb:
 	ln -s ${ai_model} .
