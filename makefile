@@ -1,11 +1,10 @@
 MAKEFLAGS += --no-print-directory
 
-# DATA ?= /Volumes/AIRUSB/ASIAIR/Autorun
-DATA ?= /Volumes/ASIAIR/Autorun
+DATA ?= /Volumes/AIRUSB/ASIAIR/Autorun
 STARNET ?= ${HOMEBREW_PREFIX}/bin/starnet++
 MAGICK ?= ${HOMEBREW_PREFIX}/bin/magick
 
-scratch = process
+scratch = process results masters
 dirs = biases flats darks lights ${scratch}
 
 
@@ -14,12 +13,11 @@ help:
 
 init: $(dirs) ## Create a new workspace
 
-clean: ## Delete Siril artifacts
-	rm -rf *.fit ${scratch} 2>/dev/null
+clean: ## Delete Siril artifacts. Ex: *.tif|*.fit and scratch dirs
+	rm -rf *.fit *.tif ${scratch} 2>/dev/null
 
-purge: ## Delete everything except the makefile
-	@rm -rf $(filter-out makefile readme.md, $(wildcard *))
-	# @rm -rf $(filter-out makefile readme.md, $(wildcard *))
+purge: ## Delete everything except the makefile and readme
+	rm -rf $(filter-out makefile readme.md, $(wildcard *))
 
 import: obj-check | init ## Copy ASIAIR data from $DATA to ${dirs}
 	rsync -a --progress ${DATA}/Dark/*.fit darks
@@ -44,16 +42,14 @@ import: obj-check | init ## Copy ASIAIR data from $DATA to ${dirs}
 	savetif $*
 	SNET
 
-%.tar.gz: ## Zip the current workdir as ../YYYY.MM.DD_%.tar.gz
-	@tar -cf $(shell date '+%Y.%m.%d')_$@ . 2>/dev/null
-	@mv *.tar.gz ../
+%.tar.gz: clean ## Clean and zip the current workdir as ./YYYY.MM.DD_%.tar.gz. Excludes *.psd files
+	@tar -czf $(shell date '+%Y.%m.%d')_$@ --exclude '"*.psd"' . 2>/dev/null
 
 
 ################################################################################
 
 $(STARNET):
-	brew tap audibleblink/starnet2cli
-	brew install starnet2cli
+	brew install starnet-plus-plus
 
 $(MAGICK):
 	brew install imagemagick
