@@ -5,10 +5,9 @@ STARNET ?= ${HOMEBREW_PREFIX}/bin/starnet++
 MAGICK ?= ${HOMEBREW_PREFIX}/bin/magick
 
 scratch = process results masters
-dirs = biases flats darks lights ${scratch}
+dirs = biases flats darks lights
 
-
-help:
+help: ## Makefile utils for processing Astrophotography data
 	@grep -E '^[a-zA-Z0-9\.%]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 init: $(dirs) ## Create a new workspace
@@ -24,6 +23,9 @@ import: obj-check | init ## Copy ASIAIR data from $DATA to ${dirs}
 	rsync -a --progress ${DATA}/Bias/*.fit biases
 	rsync -a --progress ${DATA}/Flat/*.fit flats
 	rsync -a --progress ${DATA}/Light/${OBJ}/*.fit lights
+
+archive: obj-check ## Archive fit/psd files as ./YYYY.MM.DD_$OBJ.tar.zst
+	@tar -vcaf $(shell date '+%Y.%m.%d')_${OBJ}.tar.zst -C .. -T <(find .. -name \*.fit -or -name \*.psd | cut -c4-)
 
 %.starless.tif: $(STARNET) ## Create a starless image from $*.tif
 	$(MAKE) $*.tif
@@ -42,9 +44,6 @@ import: obj-check | init ## Copy ASIAIR data from $DATA to ${dirs}
 	savetif $*
 	SNET
 
-%.tar.gz: clean ## Clean and zip the current workdir as ./YYYY.MM.DD_%.tar.gz. Excludes *.psd files
-	@tar -czf $(shell date '+%Y.%m.%d')_$@ --exclude '"*.psd"' . 2>/dev/null
-
 
 ################################################################################
 
@@ -62,4 +61,6 @@ ifndef OBJ
 	$(error OBJ is undefined)
 endif
 
-.PHONY: help clean init purge obj-check import
+SHELL=/bin/zsh
+
+.PHONY: help clean init purge obj-check import archive
