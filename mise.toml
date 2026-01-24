@@ -1,0 +1,129 @@
+# Mise configuration for AstroWorkbench
+# https://mise.jdx.dev
+
+[env]
+STARNET = "{{env.HOMEBREW_PREFIX}}/bin/starnet2"
+MAGICK = "{{env.HOMEBREW_PREFIX}}/bin/magick"
+
+[task_config]
+dir = "{{config_root}}"
+
+# ============================================================================
+# Workspace Management
+# ============================================================================
+
+[tasks.clean]
+description = "Delete Siril artifacts and scratch directories"
+alias = "c"
+run = "rm -rf process results masters"
+
+[tasks.purge]
+description = "Delete entire workspace except config files"
+confirm = "Are you sure you want to delete the entire workspace?"
+run = 'find . -maxdepth 1 ! -name ".mise.toml" ! -name "mise.toml" ! -name "readme.md" ! -name "." ! -name ".git" -exec rm -rf {} +'
+
+# ============================================================================
+# Data Import/Export
+# ============================================================================
+
+[tasks.import]
+description = "Copy ASIAIR data from external drive to workspace"
+alias = "im"
+usage = '''
+flag "--source <source>" help="Source directory path"
+arg "<object>" help="Object name (e.g., M31, NGC7000)"
+'''
+depends = ["init"]
+run = """
+rsync -a --progress "${usage_source?}/Dark/*.fit" darks/
+rsync -a --progress "${usage_source?}/Bias/*.fit" biases/
+rsync -a --progress "${usage_source?}/Flat/*.fit" flats/
+rsync -a --progress "${usage_source?}/Light/${usage_object?}/*.fit" lights/
+"""
+
+[tasks.archive]
+description = "Archive FITS/PSD files as timestamped tarball"
+depends = ["clean"]
+alias = "tar"
+usage = 'arg "<object>" help="Object name for archive filename"'
+run = """
+find .. -name "*.fit" -or -name "*.psd" | cut -c4- > /tmp/archive-files.txt
+tar -vcaf "$(date +%Y.%m.%d)_${usage_object?}.tar.zst" -C .. -T /tmp/archive-files.txt
+rm /tmp/archive-files.txt
+"""
+
+# ============================================================================
+# Image Processing Pipeline
+# ============================================================================
+
+[tasks."convert-tif"]
+description = "Convert FITS file to 16-bit TIFF using Siril"
+alias = "tif"
+usage = 'arg "<file>" help="FITS filename without .fit extension"'
+run = """
+siril-cli -d . -s - <<SNET
+requires 1.3.0
+load ${usage_file?}.fit
+savetif ${usage_file?}
+SNET
+"""
+
+[tasks."create-starless"]
+description = "Create starless image using StarNet2"
+alias = "starless"
+usage = 'arg "<file>" help="Image filename without extension"'
+depends = ["_check-starnet"]
+run = """
+if [ ! -f "${usage_file?}.tif" ]; then
+  echo "Converting FITS to TIFF..."
+  mise run convert-tif "${usage_file?}"
+fi
+
+"$STARNET" -i "${usage_file?}.tif" -o "${usage_file?}.starless.tif" -m "${usage_file?}.mask.tif"
+"""
+
+[tasks."create-stars"]
+description = "Create stars-only and mask TIFFs from image"
+alias = "stars"
+usage = 'arg "<file>" help="Image filename without extension"'
+depends = ["_check-magick"]
+run = """
+if [ ! -f "${usage_file?}.starless.tif" ] || [ ! -f "${usage_file?}.mask.tif" ]; then
+  echo "Creating starless image..."
+  mise run create-starless "${usage_file?}"
+fi
+
+"$MAGICK" "${usage_file?}.tif" "${usage_file?}.mask.tif" -alpha off -compose CopyOpacity -composite "${usage_file?}.stars.tif"
+"""
+
+# ============================================================================
+# Internal Helper Tasks
+# ============================================================================
+
+[tasks.init]
+description = "Create a new workspace"
+hide = true
+alias = "i"
+run = "mkdir -p biases flats darks lights"
+
+[tasks._check-starnet]
+description = "Verify StarNet2 is installed"
+hide = true
+run = """
+if [ ! -x "$STARNET" ]; then
+  echo "Error: StarNet2 not found at $STARNET"
+  echo "Install with: brew install starnet2"
+  exit 1
+fi
+"""
+
+[tasks._check-magick]
+description = "Verify ImageMagick is installed"
+hide = true
+run = """
+if [ ! -x "$MAGICK" ]; then
+  echo "Error: ImageMagick not found at $MAGICK"
+  echo "Install with: brew install imagemagick"
+  exit 1
+fi
+"""
