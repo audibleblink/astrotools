@@ -1,5 +1,6 @@
 # Mise configuration for AstroWorkbench
 # https://mise.jdx.dev
+
 [hooks]
 enter = "echo 'I entered the project'"
 leave = "echo 'I left the project'"
@@ -28,24 +29,49 @@ run = 'find . -maxdepth 1 ! -name "readme.md" ! -name ".*" -exec rm -rf {} +'
 # Data Import/Export
 # ============================================================================
 
-[tasks.import]
-description = "Copy ASIAIR data from external drive to workspace"
-alias = "im"
+[tasks."import:darks"]
+description = "Import dark frames"
+hide = true
+usage = 'flag "--source <source>" help="Source directory path"'
+depends = ["init"]
+run = 'rsync -a --progress "${usage_source?}/Dark/*.fit" darks/'
+
+[tasks."import:biases"]
+description = "Import bias frames"
+hide = true
+usage = 'flag "--source <source>" help="Source directory path"'
+depends = ["init"]
+run = 'rsync -a --progress "${usage_source?}/Bias/*.fit" biases/'
+
+[tasks."import:flats"]
+description = "Import flat frames"
+hide = true
+usage = 'flag "--source <source>" help="Source directory path"'
+depends = ["init"]
+run = 'rsync -a --progress "${usage_source?}/Flat/*.fit" flats/'
+
+[tasks."import:lights"]
+description = "Import light frames"
+hide = true
 usage = '''
 flag "--source <source>" help="Source directory path"
 arg "<object>" help="Object name (e.g., M31, NGC7000)"
 '''
 depends = ["init"]
-run = """
-rsync -a --progress "${usage_source?}/Dark/*.fit" darks/
-rsync -a --progress "${usage_source?}/Bias/*.fit" biases/
-rsync -a --progress "${usage_source?}/Flat/*.fit" flats/
-rsync -a --progress "${usage_source?}/Light/${usage_object?}/*.fit" lights/
-"""
+run = 'rsync -a --progress "${usage_source?}/Light/${usage_object?}/*.fit" lights/'
+
+[tasks.import]
+description = "Copy ASIAIR data from external drive to workspace (runs in parallel)"
+alias = "im"
+usage = '''
+flag "--source <source>" help="Source directory path"
+arg "<object>" help="Object name (e.g., M31, NGC7000)"
+'''
+depends = ["import:darks", "import:biases", "import:flats", "import:lights"]
+run = 'echo "Import complete!"'
 
 [tasks.archive]
 description = "Archive FITS/PSD files as timestamped tarball"
-depends = ["clean"]
 alias = "tar"
 usage = 'arg "<object>" help="Object name for archive filename"'
 run = """
@@ -75,12 +101,13 @@ SNET
 # ============================================================================
 
 [tasks.init]
-description = "Create a new workspace"
+description = "Create workspace directory structure"
 hide = true
 alias = "i"
+outputs = ["biases/", "flats/", "darks/", "lights/"]
 run = "mkdir -p biases flats darks lights"
 
-[tasks._check-starnet]
+[tasks.check-starnet]
 description = "Verify StarNet2 is installed"
 hide = true
 run = """
