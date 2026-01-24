@@ -68,34 +68,6 @@ savetif ${usage_file?}
 SNET
 """
 
-[tasks."create-starless"]
-description = "Create starless image using StarNet2"
-alias = "starless"
-usage = 'arg "<file>" help="Image filename without extension"'
-depends = ["_check-starnet"]
-run = """
-if [ ! -f "${usage_file?}.tif" ]; then
-  echo "Converting FITS to TIFF..."
-  mise run convert-tif "${usage_file?}"
-fi
-
-"$STARNET" -i "${usage_file?}.tif" -o "${usage_file?}.starless.tif" -m "${usage_file?}.mask.tif"
-"""
-
-[tasks."create-stars"]
-description = "Create stars-only and mask TIFFs from image"
-alias = "stars"
-usage = 'arg "<file>" help="Image filename without extension"'
-depends = ["_check-magick"]
-run = """
-if [ ! -f "${usage_file?}.starless.tif" ] || [ ! -f "${usage_file?}.mask.tif" ]; then
-  echo "Creating starless image..."
-  mise run create-starless "${usage_file?}"
-fi
-
-"$MAGICK" "${usage_file?}.tif" "${usage_file?}.mask.tif" -alpha off -compose CopyOpacity -composite "${usage_file?}.stars.tif"
-"""
-
 # ============================================================================
 # Internal Helper Tasks
 # ============================================================================
