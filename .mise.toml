@@ -3,7 +3,6 @@
 
 [env]
 STARNET = "{{env.HOMEBREW_PREFIX}}/bin/starnet2"
-MAGICK = "{{env.HOMEBREW_PREFIX}}/bin/magick"
 
 [task_config]
 dir = "{{config_root}}"
@@ -20,7 +19,7 @@ run = "rm -rf process results masters"
 [tasks.purge]
 description = "Delete entire workspace except config files"
 confirm = "Are you sure you want to delete the entire workspace?"
-run = 'find . -maxdepth 1 ! -name ".mise.toml" ! -name "mise.toml" ! -name "readme.md" ! -name "." ! -name ".git" -exec rm -rf {} +'
+run = 'find . -maxdepth 1 ! -name "readme.md" ! -name ".*" -exec rm -rf {} +'
 
 # ============================================================================
 # Data Import/Export
@@ -85,17 +84,6 @@ run = """
 if [ ! -x "$STARNET" ]; then
   echo "Error: StarNet2 not found at $STARNET"
   echo "Install with: brew install starnet2"
-  exit 1
-fi
-"""
-
-[tasks._check-magick]
-description = "Verify ImageMagick is installed"
-hide = true
-run = """
-if [ ! -x "$MAGICK" ]; then
-  echo "Error: ImageMagick not found at $MAGICK"
-  echo "Install with: brew install imagemagick"
   exit 1
 fi
 """
