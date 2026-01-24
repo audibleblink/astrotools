@@ -1,5 +1,8 @@
 # Mise configuration for AstroWorkbench
 # https://mise.jdx.dev
+[hooks]
+enter = "echo 'I entered the project'"
+leave = "echo 'I left the project'"
 
 [env]
 STARNET = "{{env.HOMEBREW_PREFIX}}/bin/starnet2"
