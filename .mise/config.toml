@@ -8,9 +8,6 @@ leave = "echo 'I left the project'"
 [env]
 STARNET = "{{env.HOMEBREW_PREFIX}}/bin/starnet2"
 
-[task_config]
-dir = "{{config_root}}"
-
 # ============================================================================
 # Workspace Management
 # ============================================================================
